@@ -1,0 +1,4 @@
+pyzmq
+geventhttpclient
+fabric
+geventhttpclient
