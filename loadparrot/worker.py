@@ -29,13 +29,13 @@ def run_worker():
     context = zmq.Context()
 
     task_socket = context.socket(zmq.PULL)
-    task_socket.connect("tcp://127.0.0.1:{0}".format(config.TASK_PORT))
+    task_socket.connect("tcp://{ip}:{port}".format(ip=config.KING_IP, port=config.TASK_PORT))
 
     stat_socket = context.socket(zmq.PUSH)
-    stat_socket.connect("tcp://127.0.0.1:{0}".format(config.STAT_PORT))
+    stat_socket.connect("tcp://{ip}:{port}".format(ip=config.KING_IP, port=config.STAT_PORT))
 
     fan_socket = context.socket(zmq.SUB)
-    fan_socket.connect("tcp://127.0.0.1:{0}".format(config.FANOUT_PORT))
+    fan_socket.connect("tcp://{ip}:{port}".format(ip=config.KING_IP, port=config.FANOUT_PORT))
     fan_socket.setsockopt(zmq.SUBSCRIBE, "")
 
     poller = zmq.Poller()
