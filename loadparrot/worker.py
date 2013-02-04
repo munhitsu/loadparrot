@@ -1,18 +1,31 @@
+"""
+worker to run on each host
+execute::
+
+    python loadparrot/worker.py -h
+
+"""
+
 from gevent.monkey import patch_all
 patch_all()
 
 import zmq.green as zmq
-import time
+
+from loadparrot.messages import MessageAction
 import loadparrot.utils
-
-from loadparrot.model import MessageAction
 import config
-
 import logging
 log = logging.getLogger(__name__)
 
 
-def main():
+import argparse
+
+
+def run_worker():
+    """
+    Main loop. Worker is fully managed by master.
+    """
+    log.info("Connecting to KING: {ip}".format(ip=config.KING_IP))
     context = zmq.Context()
 
     task_socket = context.socket(zmq.PULL)
@@ -24,7 +37,6 @@ def main():
     fan_socket = context.socket(zmq.SUB)
     fan_socket.connect("tcp://127.0.0.1:{0}".format(config.FANOUT_PORT))
     fan_socket.setsockopt(zmq.SUBSCRIBE, "")
-
 
     poller = zmq.Poller()
     poller.register(task_socket, zmq.POLLIN)
@@ -41,14 +53,27 @@ def main():
             else:
                 raise Exception("Unsupported Message: {1}".format(message))
         elif task_socket in socks and socks[task_socket] == zmq.POLLIN:
-            scenario = task_socket.recv_pyobj()
-            log.debug(scenario)
-            stats = scenario()
+            user_session = task_socket.recv_pyobj()
+            log.debug(user_session)
+            stats = user_session()
             stat_socket.send_pyobj(stats)
 
     # time to close
     poller.unregister(task_socket)
     poller.unregister(fan_socket)
+
+
+def main():
+    """
+    Parses arguments and calls :func:`run_worker`
+    """
+    parser = argparse.ArgumentParser(description="Let's make some load")
+    parser.add_argument("--king",
+                        help="King address IP",
+                        default=config.KING_IP)
+    args = parser.parse_args()
+    config.KING_IP = args.king
+    run_worker()
 
 if __name__ == "__main__":
     main()

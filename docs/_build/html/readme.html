@@ -1,0 +1,213 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Short introduction to loadParrot &mdash; loadParrot 0.0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="loadParrot 0.0.1 documentation" href="index.html" />
+    <link rel="next" title="Specific modules" href="modules.html" />
+    <link rel="prev" title="Welcome to loadParrot’s documentation!" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="modules.html" title="Specific modules"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to loadParrot’s documentation!"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">loadParrot 0.0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="short-introduction-to-loadparrot">
+<h1>Short introduction to loadParrot<a class="headerlink" href="#short-introduction-to-loadparrot" title="Permalink to this headline">¶</a></h1>
+<p>An experiment to make ultra scalable and fast load testing
+tool for HTTP.</p>
+<p>It&#8217;s based on: <a class="reference external" href="http://zeromq.org">ØMQ</a>, python and gevent.</p>
+<div class="section" id="status">
+<h2>Status<a class="headerlink" href="#status" title="Permalink to this headline">¶</a></h2>
+<p>proof of concept</p>
+</div>
+<div class="section" id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li>As user I shall be able to test real traffic on remote website</li>
+<li>As user I shall be able to distribute traffic among huge cluster</li>
+<li>As user I shall be able to easily use scenarios from tsung, preferably whole configurations</li>
+<li>As user I shall be able to run test on clusters within minutes (simple deployment)</li>
+</ol>
+</div>
+<div class="section" id="install">
+<h2>Install<a class="headerlink" href="#install" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic">
+<li><p class="first">Clone git repo:</p>
+<div class="highlight-python"><pre>git clone https://github.com/munhitsu/loadparrot.git</pre>
+</div>
+</li>
+<li><p class="first">Create and enter virtual env. My favourite method is by using
+virtualenv wrapper. See: <a class="reference external" href="https://gist.github.com/1034876">gist</a></p>
+</li>
+<li><p class="first">Install all dependencies:</p>
+<div class="highlight-python"><pre>cd (your clonned repo dir)
+pip install -r requirements.txt
+add2virtualenv .</pre>
+</div>
+</li>
+</ol>
+<ol class="arabic simple" start="3">
+<li>Repeat on all hosts that you want to run workers</li>
+</ol>
+</div>
+<div class="section" id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic">
+<li><p class="first">Start workers pointing to kings ip:</p>
+<div class="highlight-python"><pre>python loadparrot/worker.py --king (king_ip)</pre>
+</div>
+</li>
+<li><p class="first">As a temporary hack edit scenario in loadparrot/scenario.py</p>
+</li>
+<li><p class="first">Start the king:</p>
+<div class="highlight-python"><pre>python loadparrot/king.py</pre>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="documentation">
+<h2>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h2>
+<p>Sphinx based. To build execute make within docs directory.</p>
+</div>
+<div class="section" id="todo">
+<h2>TODO<a class="headerlink" href="#todo" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>unit tests</li>
+<li>real configuration instead of stubs</li>
+<li>read real metrics</li>
+<li>spawn http stats interface</li>
+<li>print charts (preferably in browser)</li>
+<li>update user events execution to be based on a Poisson Distribution or
+other :)</li>
+<li>optimize scenarios<ul>
+<li>client should pull all scenarios from server on start</li>
+<li>we shall request execution of scenario with specific version</li>
+<li>if client uses different scenario version than it shall pull a
+latest version</li>
+<li>each execution of parent should generate unique version so we can
+run workers and restart king</li>
+<li>flush queues (handbrake) so that king can restart and we don&#8217;t
+need to restart workers</li>
+</ul>
+</li>
+<li>fab + buildout for easy remote deploy and start</li>
+<li>rename king to... queen</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Short introduction to loadParrot</a><ul>
+<li><a class="reference internal" href="#status">Status</a></li>
+<li><a class="reference internal" href="#requirements">Requirements</a></li>
+<li><a class="reference internal" href="#install">Install</a></li>
+<li><a class="reference internal" href="#usage">Usage</a></li>
+<li><a class="reference internal" href="#documentation">Documentation</a></li>
+<li><a class="reference internal" href="#todo">TODO</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Welcome to loadParrot&#8217;s documentation!</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="modules.html"
+                        title="next chapter">Specific modules</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/readme.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="modules.html" title="Specific modules"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to loadParrot’s documentation!"
+             >previous</a> |</li>
+        <li><a href="index.html">loadParrot 0.0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Mateusz Lapsa-Malawski.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

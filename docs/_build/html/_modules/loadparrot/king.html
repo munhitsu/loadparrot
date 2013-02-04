@@ -1,0 +1,249 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>loadparrot.king &mdash; loadParrot 0.0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="loadParrot 0.0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">loadParrot 0.0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for loadparrot.king</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Master of puppets</span>
+
+<span class="sd">Initializes Scenario and distributes to all workers specific UserSessions.</span>
+
+<span class="sd">We send user session to worker and wait for response.</span>
+<span class="sd">Knowing how many sessions we&#39;ve send and responses received we know how many</span>
+<span class="sd">sessions are open at the moment. We constantly monitor how many sessions are</span>
+<span class="sd">needed according to scenario load and send them to workers.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">gevent.monkey</span> <span class="kn">import</span> <span class="n">patch_all</span>
+<span class="n">patch_all</span><span class="p">()</span>
+
+<span class="kn">import</span> <span class="nn">zmq.green</span> <span class="kn">as</span> <span class="nn">zmq</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">loadparrot.utils</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">from</span> <span class="nn">loadparrot.scenario</span> <span class="kn">import</span> <span class="n">scenario</span>
+<span class="kn">from</span> <span class="nn">loadparrot.messages</span> <span class="kn">import</span> <span class="n">MessageAction</span>
+<span class="kn">import</span> <span class="nn">loadparrot.utils</span>
+<span class="kn">import</span> <span class="nn">config</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+
+
+
+
+<div class="viewcode-block" id="ClosingException"><a class="viewcode-back" href="../../modules.html#loadparrot.king.ClosingException">[docs]</a><span class="k">class</span> <span class="nc">ClosingException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Throw to finish running</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">pass</span>
+
+</div>
+<div class="viewcode-block" id="users_since_t0"><a class="viewcode-back" href="../../modules.html#loadparrot.king.users_since_t0">[docs]</a><span class="k">def</span> <span class="nf">users_since_t0</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t_now</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">speeds</span><span class="o">=</span><span class="p">()):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Number of expected users logged on server at t_now</span>
+
+<span class="sd">    :param t0: start of load - our day 0</span>
+<span class="sd">    :param t_now: give time.time()</span>
+<span class="sd">    :param speeds: array of tuples (durations in second, new users per second)</span>
+<span class="sd">    :type speeds: []</span>
+<span class="sd">    :rtype: int - number of expected users</span>
+<span class="sd">    :raises: ClosingException - if no more users programmed in speeds array</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c">#TODO: optimize (cache pre-calculated data)</span>
+    <span class="n">t_delta</span> <span class="o">=</span> <span class="n">t_now</span> <span class="o">-</span> <span class="n">t0</span>
+    <span class="n">combined_users</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">combined_time</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">duration</span><span class="p">,</span> <span class="n">speed</span><span class="p">)</span> <span class="ow">in</span> <span class="n">speeds</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">t_delta</span> <span class="o">&gt;</span> <span class="p">(</span><span class="n">combined_time</span> <span class="o">+</span> <span class="n">duration</span><span class="p">):</span>
+            <span class="n">combined_time</span> <span class="o">+=</span> <span class="n">duration</span>
+            <span class="n">combined_users</span> <span class="o">+=</span> <span class="n">duration</span> <span class="o">*</span> <span class="n">speed</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sub_duration</span> <span class="o">=</span> <span class="n">t_delta</span> <span class="o">-</span> <span class="n">combined_time</span>
+            <span class="n">combined_users</span> <span class="o">+=</span> <span class="n">sub_duration</span> <span class="o">*</span> <span class="n">speed</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">combined_users</span><span class="p">)</span>
+
+    <span class="c"># if we are out of speeds than time pull the handbrake</span>
+    <span class="k">raise</span> <span class="n">ClosingException</span>
+
+</div>
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../modules.html#loadparrot.king.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    runner</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">context</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
+
+    <span class="c"># task distribution</span>
+    <span class="n">task_socket</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">PUSH</span><span class="p">)</span>
+    <span class="n">task_socket</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&quot;tcp://0.0.0.0:{0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">TASK_PORT</span><span class="p">))</span>
+
+    <span class="c"># returned statistics</span>
+    <span class="n">stat_socket</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">PULL</span><span class="p">)</span>
+    <span class="n">stat_socket</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&quot;tcp://0.0.0.0:{0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">STAT_PORT</span><span class="p">))</span>
+
+    <span class="c"># fanout communication channel</span>
+    <span class="n">fanout_socket</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">PUB</span><span class="p">)</span>
+    <span class="n">fanout_socket</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&quot;tcp://0.0.0.0:{0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">FANOUT_PORT</span><span class="p">))</span>
+
+    <span class="n">poller</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Poller</span><span class="p">()</span>
+    <span class="n">poller</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">stat_socket</span><span class="p">,</span> <span class="n">zmq</span><span class="o">.</span><span class="n">POLLIN</span><span class="p">)</span>
+
+    <span class="n">user_session_generator</span> <span class="o">=</span> <span class="n">scenario</span><span class="o">.</span><span class="n">get_user_session</span><span class="p">()</span>
+
+    <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">t_now</span> <span class="o">=</span> <span class="n">t0</span>
+    <span class="n">current_users</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">consume_stats</span><span class="p">(</span><span class="n">stat</span><span class="p">):</span>
+        <span class="k">print</span> <span class="n">stat</span>
+
+    <span class="c"># flush results queue</span>
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="n">socks</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">poller</span><span class="o">.</span><span class="n">poll</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">stat_socket</span> <span class="ow">in</span> <span class="n">socks</span> <span class="ow">and</span> <span class="n">socks</span><span class="p">[</span><span class="n">stat_socket</span><span class="p">]</span> <span class="o">==</span> <span class="n">zmq</span><span class="o">.</span><span class="n">POLLIN</span><span class="p">:</span>
+            <span class="n">stat</span> <span class="o">=</span> <span class="n">stat_socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
+            <span class="k">print</span> <span class="s">&quot;,&quot;</span><span class="p">,</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">break</span>
+
+    <span class="n">running</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">while</span> <span class="n">running</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c"># balancing amount of user sessions</span>
+            <span class="n">expected_users</span> <span class="o">=</span> <span class="n">users_since_t0</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t_now</span><span class="p">,</span> <span class="n">scenario</span><span class="o">.</span><span class="n">load</span><span class="p">)</span>
+            <span class="n">users_delta</span> <span class="o">=</span> <span class="n">expected_users</span> <span class="o">-</span> <span class="n">current_users</span>
+            <span class="k">if</span> <span class="n">users_delta</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">users_delta</span><span class="p">):</span>
+                    <span class="n">user_session</span> <span class="o">=</span> <span class="n">user_session_generator</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+                    <span class="k">assert</span> <span class="n">user_session</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
+                    <span class="n">task_socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">user_session</span><span class="p">)</span>
+                    <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span>
+                    <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+                <span class="n">current_users</span> <span class="o">+=</span> <span class="n">users_delta</span>
+        <span class="k">except</span> <span class="n">ClosingException</span><span class="p">:</span>
+            <span class="n">running</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+        <span class="c"># let&#39;s pick up all stats</span>
+        <span class="c">#TODO: move to separate process</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">socks</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">poller</span><span class="o">.</span><span class="n">poll</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">stat_socket</span> <span class="ow">in</span> <span class="n">socks</span> <span class="ow">and</span> <span class="n">socks</span><span class="p">[</span><span class="n">stat_socket</span><span class="p">]</span> <span class="o">==</span> <span class="n">zmq</span><span class="o">.</span><span class="n">POLLIN</span><span class="p">:</span>
+                <span class="n">stat</span> <span class="o">=</span> <span class="n">stat_socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
+                <span class="n">consume_stats</span><span class="p">(</span><span class="n">stat</span><span class="p">)</span>
+                <span class="n">current_users</span> <span class="o">-=</span> <span class="mi">1</span>
+                <span class="k">print</span> <span class="s">&quot;running - remaining current_users: {0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">current_users</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">break</span>
+        <span class="n">t_now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">EXIT_WORKERS</span><span class="p">:</span>
+        <span class="n">fanout_socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">MessageAction</span><span class="p">(</span><span class="n">MessageAction</span><span class="o">.</span><span class="n">EXIT</span><span class="p">))</span>
+
+    <span class="c">#TODO: add timeout calculated from scenarios</span>
+    <span class="c">#TODO: move to separate process</span>
+    <span class="k">while</span> <span class="n">current_users</span><span class="p">:</span>
+        <span class="n">stat</span> <span class="o">=</span> <span class="n">stat_socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
+        <span class="n">consume_stats</span><span class="p">(</span><span class="n">stat</span><span class="p">)</span>
+        <span class="n">current_users</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="k">print</span> <span class="s">&quot;closing - remaining current_users: {0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">current_users</span><span class="p">)</span>
+
+    <span class="n">poller</span><span class="o">.</span><span class="n">unregister</span><span class="p">(</span><span class="n">stat_socket</span><span class="p">)</span>
+
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">loadParrot 0.0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Mateusz Lapsa-Malawski.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

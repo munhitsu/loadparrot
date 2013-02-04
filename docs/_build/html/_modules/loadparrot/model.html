@@ -1,0 +1,361 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>loadparrot.model &mdash; loadParrot 0.0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="loadParrot 0.0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">loadParrot 0.0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for loadparrot.model</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Model of Test Scenario</span>
+
+<span class="sd">Scenario is configured using</span>
+<span class="sd">- list of UserAgent(s)</span>
+<span class="sd">- load speeds</span>
+<span class="sd">- list of UserSession(s)</span>
+
+<span class="sd">UserSession is a list of class based on UserSessionStep:</span>
+<span class="sd">- Request</span>
+<span class="sd">- ThinkTime</span>
+<span class="sd">...</span>
+
+
+<span class="sd">note about probability</span>
+<span class="sd">~~~~~~~~~~~~~~~~~~~~~~</span>
+
+<span class="sd">As some objects are configured with probability you may expect to see objects</span>
+<span class="sd">distributed exactly as specified.</span>
+
+<span class="sd">What it in fact means is that on each event, with probability specified, random</span>
+<span class="sd">function is executed. So say we have UserAgent(ie6, probablity=90) and</span>
+<span class="sd">UserAgent(safari6, probability=10). Each time we need to select UserAgent we</span>
+<span class="sd">toss a 10 side &quot;dice&quot;.</span>
+
+<span class="sd">So we have 10% probability to reach safari and 90% probability to get ie6.</span>
+<span class="sd">Throwing the dice 100 times we will get _close_ to 10 of safari and close to</span>
+<span class="sd">90 of _ie6_.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">geventhttpclient</span> <span class="kn">import</span> <span class="n">HTTPClient</span>
+<span class="kn">from</span> <span class="nn">geventhttpclient.url</span> <span class="kn">import</span> <span class="n">URL</span>
+<span class="kn">from</span> <span class="nn">geventhttpclient.client</span> <span class="kn">import</span> <span class="n">Header</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">from</span> <span class="nn">loadparrot.utils</span> <span class="kn">import</span> <span class="n">WeightedRandomGenerator</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ScenarioError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="c">#TODO: implement requests_limit</span>
+<div class="viewcode-block" id="UserAgent"><a class="viewcode-back" href="../../modules.html#loadparrot.model.UserAgent">[docs]</a><span class="k">class</span> <span class="nc">UserAgent</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    configures UserSession</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">SAFARI_6</span> <span class="o">=</span> <span class="s">&quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/536.26.17 (KHTML, like Gecko) Version/6.0.2 Safari/536.26.17&quot;</span>
+    <span class="n">FIREFOX_18</span> <span class="o">=</span> <span class="s">&quot;Mozilla/5.0 (Windows NT 5.1; rv:18.0) Gecko/20100101 Firefox/18.0&quot;</span>
+    <span class="n">IE_10_6</span> <span class="o">=</span> <span class="s">&quot;Mozilla/5.0 (compatible; MSIE 10.6; Windows NT 6.1; Trident/5.0; InfoPath.2; SLCC1; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729; .NET CLR 2.0.50727) 3gpp-gba UNTRUSTED/1.0&quot;</span>
+    <span class="n">CHROME_24</span> <span class="o">=</span> <span class="s">&quot;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1309.0 Safari/537.17&quot;</span>
+
+<div class="viewcode-block" id="UserAgent.__init__"><a class="viewcode-back" href="../../modules.html#loadparrot.model.UserAgent.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">agent_string</span><span class="p">,</span> <span class="n">probability</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">requests_limit</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param name: i.e. UserAgent.SAFARI_6</span>
+<span class="sd">        :param probability: what is the probability of this agent being used on</span>
+<span class="sd">        UserSession</span>
+<span class="sd">        :param requests_limit: how many requests can be executed in parallel</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_string</span> <span class="o">=</span> <span class="n">agent_string</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">probability</span> <span class="o">=</span> <span class="n">probability</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">requests_limit</span> <span class="o">=</span> <span class="n">requests_limit</span>
+</div>
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">__str__</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+
+<div class="viewcode-block" id="UserAgent.get_as_dict"><a class="viewcode-back" href="../../modules.html#loadparrot.model.UserAgent.get_as_dict">[docs]</a>    <span class="k">def</span> <span class="nf">get_as_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        a representation for geventhttpclient</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s">&#39;User-Agent&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_string</span>
+        <span class="p">}</span>
+
+</div></div>
+<div class="viewcode-block" id="UserSession"><a class="viewcode-back" href="../../modules.html#loadparrot.model.UserSession">[docs]</a><span class="k">class</span> <span class="nc">UserSession</span><span class="p">(</span><span class="nb">list</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Object that is send to worker to execute</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="UserSession.__init__"><a class="viewcode-back" href="../../modules.html#loadparrot.model.UserSession.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">probability</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">UserSession</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">probability</span> <span class="o">=</span> <span class="n">probability</span>
+</div>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Executing UserSession {name} using agent {agent}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span><span class="n">agent</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">runtime_config</span><span class="p">[</span><span class="s">&quot;agent&quot;</span><span class="p">]))</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">step_start</span> <span class="o">=</span> <span class="n">finish</span> <span class="o">=</span> <span class="n">start</span>
+        <span class="n">times_for_steps</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">UserSessionStep</span><span class="p">)</span>
+            <span class="n">step</span><span class="p">()</span>
+            <span class="n">finish</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">step_duration</span> <span class="o">=</span> <span class="n">finish</span> <span class="o">-</span> <span class="n">step_start</span>
+            <span class="n">times_for_steps</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">step</span><span class="o">.</span><span class="n">__str__</span><span class="p">(),</span> <span class="n">step_duration</span><span class="p">))</span>
+            <span class="n">step_start</span> <span class="o">=</span> <span class="n">finish</span>
+        <span class="n">session_duration</span> <span class="o">=</span> <span class="n">finish</span> <span class="o">-</span> <span class="n">start</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s">&#39;duration&#39;</span><span class="p">:</span> <span class="n">session_duration</span><span class="p">,</span>
+            <span class="s">&#39;steps&#39;</span><span class="p">:</span> <span class="n">times_for_steps</span><span class="p">,</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="UserSession.get_configured"><a class="viewcode-back" href="../../modules.html#loadparrot.model.UserSession.get_configured">[docs]</a>    <span class="k">def</span> <span class="nf">get_configured</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runtime_config</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Performs a deep copy of self and configures all session steps</span>
+<span class="sd">        with runtime_config</span>
+<span class="sd">        Such session can be send to worker</span>
+
+<span class="sd">        :param runtime_config: runtime_configuration</span>
+<span class="sd">        :type runtime_config: RuntimeConfig</span>
+<span class="sd">        :rtype: UserSession</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">session</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">session_step</span> <span class="ow">in</span> <span class="n">session</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">session_step</span><span class="p">,</span> <span class="n">UserSessionStep</span><span class="p">)</span>
+            <span class="n">session_step</span><span class="o">.</span><span class="n">runtime_config</span> <span class="o">=</span> <span class="n">runtime_config</span>
+
+        <span class="n">session</span><span class="o">.</span><span class="n">runtime_config</span> <span class="o">=</span> <span class="n">runtime_config</span>
+        <span class="k">return</span> <span class="n">session</span>
+
+</div></div>
+<div class="viewcode-block" id="UserSessionStep"><a class="viewcode-back" href="../../modules.html#loadparrot.model.UserSessionStep">[docs]</a><span class="k">class</span> <span class="nc">UserSessionStep</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An abstract step. Inherit and implement __init__ and __call__</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">runtime_config</span> <span class="o">=</span> <span class="bp">None</span>  <span class="c"># it will be initialized by UserSession on send</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">runtime_config</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__str__</span><span class="p">()</span>
+
+
+<span class="c">#TODO: add sending bunch of requests at once (agent requests_limit)</span></div>
+<div class="viewcode-block" id="Request"><a class="viewcode-back" href="../../modules.html#loadparrot.model.Request">[docs]</a><span class="k">class</span> <span class="nc">Request</span><span class="p">(</span><span class="n">UserSessionStep</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    SessionStep that performs simple http request.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Request.__init__"><a class="viewcode-back" href="../../modules.html#loadparrot.model.Request.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s">&quot;1.1&quot;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s">&quot;GET&quot;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">url</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">url_object</span> <span class="o">=</span> <span class="n">URL</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="n">version</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">method</span>
+</div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;{method} {url}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">runtime_config</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">url_object</span>
+        <span class="n">http</span> <span class="o">=</span> <span class="n">HTTPClient</span><span class="p">(</span><span class="n">url</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">runtime_config</span><span class="p">[</span><span class="s">&quot;agent&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get_as_dict</span><span class="p">())</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">http</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">code</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">code</span><span class="p">)</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="n">http</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="ThinkTime"><a class="viewcode-back" href="../../modules.html#loadparrot.model.ThinkTime">[docs]</a><span class="k">class</span> <span class="nc">ThinkTime</span><span class="p">(</span><span class="n">UserSessionStep</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    SessionStep that simulates user pause between requests.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ThinkTime.__init__"><a class="viewcode-back" href="../../modules.html#loadparrot.model.ThinkTime.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">random</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">random</span> <span class="o">=</span> <span class="n">random</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+</div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">random</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;sleep(random({0}))&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;sleep({0})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">runtime_config</span>
+        <span class="n">duration</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">random</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="RuntimeConfig"><a class="viewcode-back" href="../../modules.html#loadparrot.model.RuntimeConfig">[docs]</a><span class="k">class</span> <span class="nc">RuntimeConfig</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    dictionary wrapper so that config passed to workers is more readable</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="RuntimeConfig.__init__"><a class="viewcode-back" href="../../modules.html#loadparrot.model.RuntimeConfig.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">RuntimeConfig</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="p">[</span><span class="s">&quot;agent&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent</span>
+
+</div></div>
+<div class="viewcode-block" id="Scenario"><a class="viewcode-back" href="../../modules.html#loadparrot.model.Scenario">[docs]</a><span class="k">class</span> <span class="nc">Scenario</span><span class="p">(</span><span class="nb">list</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns UserSessions based on configuration</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Scenario.__init__"><a class="viewcode-back" href="../../modules.html#loadparrot.model.Scenario.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">user_agents</span><span class="p">,</span> <span class="n">load</span><span class="p">,</span> <span class="n">user_sessions</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param name: name of scenario</span>
+<span class="sd">        :param user_agents: list of UserAgent objects</span>
+<span class="sd">        :param load: definition of load</span>
+<span class="sd">        :type load: list of tuples of</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Scenario</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="c"># validating agents</span>
+        <span class="n">probability</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">agent</span> <span class="ow">in</span> <span class="n">user_agents</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="n">UserAgent</span><span class="p">)</span>
+            <span class="n">probability</span> <span class="o">+=</span> <span class="n">agent</span><span class="o">.</span><span class="n">probability</span>
+        <span class="k">if</span> <span class="n">probability</span> <span class="o">!=</span> <span class="mi">100</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ScenarioError</span><span class="p">(</span><span class="s">&quot;Agent probability sum = {probability}&quot;</span><span class="o">.</span>
+                                <span class="n">format</span><span class="p">(</span><span class="n">probability</span><span class="o">=</span><span class="n">probability</span><span class="p">))</span>
+
+        <span class="c"># validating sessions</span>
+        <span class="n">probability</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">session</span> <span class="ow">in</span> <span class="n">user_sessions</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">UserSession</span><span class="p">)</span>
+            <span class="n">probability</span> <span class="o">+=</span> <span class="n">session</span><span class="o">.</span><span class="n">probability</span>
+        <span class="k">if</span> <span class="n">probability</span> <span class="o">!=</span> <span class="mi">100</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ScenarioError</span><span class="p">(</span><span class="s">&quot;UserSession probability sum = {probability}&quot;</span><span class="o">.</span>
+                                <span class="n">format</span><span class="p">(</span><span class="n">probability</span><span class="o">=</span><span class="n">probability</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_agents</span> <span class="o">=</span> <span class="n">user_agents</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">load</span> <span class="o">=</span> <span class="n">load</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_sessions</span> <span class="o">=</span> <span class="n">user_sessions</span>
+</div>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        executes all user_sessions</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">for</span> <span class="n">user_session</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">user_session</span><span class="p">,</span> <span class="n">UserSession</span><span class="p">)</span>
+            <span class="n">user_session</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Scenario.get_user_session"><a class="viewcode-back" href="../../modules.html#loadparrot.model.Scenario.get_user_session">[docs]</a>    <span class="k">def</span> <span class="nf">get_user_session</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        yelds return UserSession objects</span>
+<span class="sd">        objects are configured based on Scenario specification</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c">#let&#39;s initialize random generators</span>
+        <span class="n">agent_random</span> <span class="o">=</span> <span class="n">WeightedRandomGenerator</span><span class="p">(</span>
+            <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">probability</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_agents</span><span class="p">))</span>
+        <span class="n">user_session_random</span> <span class="o">=</span> <span class="n">WeightedRandomGenerator</span><span class="p">(</span>
+            <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">probability</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_sessions</span><span class="p">))</span>
+
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">s_agent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_agents</span><span class="p">[</span><span class="n">agent_random</span><span class="p">()]</span>
+            <span class="n">s_user_session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_sessions</span><span class="p">[</span><span class="n">user_session_random</span><span class="p">()]</span>
+            <span class="n">runtime_config</span> <span class="o">=</span> <span class="n">RuntimeConfig</span><span class="p">(</span><span class="n">agent</span><span class="o">=</span><span class="n">s_agent</span><span class="p">)</span>
+            <span class="n">c_user_session</span> <span class="o">=</span> <span class="n">s_user_session</span><span class="o">.</span><span class="n">get_configured</span><span class="p">(</span><span class="n">runtime_config</span><span class="o">=</span><span class="n">runtime_config</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="n">c_user_session</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">loadParrot 0.0.1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Mateusz Lapsa-Malawski.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

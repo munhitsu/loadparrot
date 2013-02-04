@@ -1,0 +1,365 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Specific modules &mdash; loadParrot 0.0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="loadParrot 0.0.1 documentation" href="index.html" />
+    <link rel="prev" title="Short introduction to loadParrot" href="readme.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="readme.html" title="Short introduction to loadParrot"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">loadParrot 0.0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-loadparrot">
+<span id="specific-modules"></span><h1>Specific modules<a class="headerlink" href="#module-loadparrot" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-loadparrot.king">
+<span id="king"></span><h2>king<a class="headerlink" href="#module-loadparrot.king" title="Permalink to this headline">¶</a></h2>
+<p>Master of puppets</p>
+<p>Initializes Scenario and distributes to all workers specific UserSessions.</p>
+<p>We send user session to worker and wait for response.
+Knowing how many sessions we&#8217;ve send and responses received we know how many
+sessions are open at the moment. We constantly monitor how many sessions are
+needed according to scenario load and send them to workers.</p>
+<dl class="exception">
+<dt id="loadparrot.king.ClosingException">
+<em class="property">exception </em><tt class="descclassname">loadparrot.king.</tt><tt class="descname">ClosingException</tt><a class="reference internal" href="_modules/loadparrot/king.html#ClosingException"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.king.ClosingException" title="Permalink to this definition">¶</a></dt>
+<dd><p>Throw to finish running</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="loadparrot.king.main">
+<tt class="descclassname">loadparrot.king.</tt><tt class="descname">main</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/loadparrot/king.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.king.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>runner</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="loadparrot.king.users_since_t0">
+<tt class="descclassname">loadparrot.king.</tt><tt class="descname">users_since_t0</tt><big>(</big><em>t0</em>, <em>t_now=&lt;built-in function time&gt;</em>, <em>speeds=()</em><big>)</big><a class="reference internal" href="_modules/loadparrot/king.html#users_since_t0"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.king.users_since_t0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of expected users logged on server at t_now</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>t0</strong> &#8211; start of load - our day 0</li>
+<li><strong>t_now</strong> &#8211; give time.time()</li>
+<li><strong>speeds</strong> (<em>[]</em>) &#8211; array of tuples (durations in second, new users per second)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">int - number of expected users</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last">ClosingException - if no more users programmed in speeds array</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-loadparrot.worker">
+<span id="worker"></span><h2>worker<a class="headerlink" href="#module-loadparrot.worker" title="Permalink to this headline">¶</a></h2>
+<p>worker to run on each host
+execute:</p>
+<div class="highlight-python"><pre>python loadparrot/worker.py -h</pre>
+</div>
+<dl class="function">
+<dt id="loadparrot.worker.main">
+<tt class="descclassname">loadparrot.worker.</tt><tt class="descname">main</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/loadparrot/worker.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.worker.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parses arguments and calls <a class="reference internal" href="#loadparrot.worker.run_worker" title="loadparrot.worker.run_worker"><tt class="xref py py-func docutils literal"><span class="pre">run_worker()</span></tt></a></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="loadparrot.worker.run_worker">
+<tt class="descclassname">loadparrot.worker.</tt><tt class="descname">run_worker</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/loadparrot/worker.html#run_worker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.worker.run_worker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main loop. Worker is fully managed by master.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-loadparrot.model">
+<span id="model"></span><h2>model<a class="headerlink" href="#module-loadparrot.model" title="Permalink to this headline">¶</a></h2>
+<p>Model of Test Scenario</p>
+<p>Scenario is configured using
+- list of UserAgent(s)
+- load speeds
+- list of UserSession(s)</p>
+<p>UserSession is a list of class based on UserSessionStep:
+- Request
+- ThinkTime
+...</p>
+<div class="section" id="note-about-probability">
+<h3>note about probability<a class="headerlink" href="#note-about-probability" title="Permalink to this headline">¶</a></h3>
+<p>As some objects are configured with probability you may expect to see objects
+distributed exactly as specified.</p>
+<p>What it in fact means is that on each event, with probability specified, random
+function is executed. So say we have UserAgent(ie6, probablity=90) and
+UserAgent(safari6, probability=10). Each time we need to select UserAgent we
+toss a 10 side &#8220;dice&#8221;.</p>
+<p>So we have 10% probability to reach safari and 90% probability to get ie6.
+Throwing the dice 100 times we will get _close_ to 10 of safari and close to
+90 of _ie6_.</p>
+<dl class="class">
+<dt id="loadparrot.model.Request">
+<em class="property">class </em><tt class="descclassname">loadparrot.model.</tt><tt class="descname">Request</tt><big>(</big><em>url</em>, <em>version='1.1'</em>, <em>method='GET'</em><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#Request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.Request" title="Permalink to this definition">¶</a></dt>
+<dd><p>SessionStep that performs simple http request.</p>
+<dl class="method">
+<dt id="loadparrot.model.Request.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>url</em>, <em>version='1.1'</em>, <em>method='GET'</em><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#Request.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.Request.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="loadparrot.model.RuntimeConfig">
+<em class="property">class </em><tt class="descclassname">loadparrot.model.</tt><tt class="descname">RuntimeConfig</tt><big>(</big><em>agent</em><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#RuntimeConfig"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.RuntimeConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>dictionary wrapper so that config passed to workers is more readable</p>
+<dl class="method">
+<dt id="loadparrot.model.RuntimeConfig.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>agent</em><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#RuntimeConfig.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.RuntimeConfig.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="loadparrot.model.Scenario">
+<em class="property">class </em><tt class="descclassname">loadparrot.model.</tt><tt class="descname">Scenario</tt><big>(</big><em>name</em>, <em>user_agents</em>, <em>load</em>, <em>user_sessions</em><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#Scenario"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.Scenario" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns UserSessions based on configuration</p>
+<dl class="method">
+<dt id="loadparrot.model.Scenario.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>name</em>, <em>user_agents</em>, <em>load</em>, <em>user_sessions</em><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#Scenario.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.Scenario.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> &#8211; name of scenario</li>
+<li><strong>user_agents</strong> &#8211; list of UserAgent objects</li>
+<li><strong>load</strong> (<em>list of tuples of</em>) &#8211; definition of load</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="loadparrot.model.Scenario.get_user_session">
+<tt class="descname">get_user_session</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#Scenario.get_user_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.Scenario.get_user_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>yelds return UserSession objects
+objects are configured based on Scenario specification</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="loadparrot.model.ThinkTime">
+<em class="property">class </em><tt class="descclassname">loadparrot.model.</tt><tt class="descname">ThinkTime</tt><big>(</big><em>random=True</em>, <em>value=1</em><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#ThinkTime"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.ThinkTime" title="Permalink to this definition">¶</a></dt>
+<dd><p>SessionStep that simulates user pause between requests.</p>
+<dl class="method">
+<dt id="loadparrot.model.ThinkTime.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>random=True</em>, <em>value=1</em><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#ThinkTime.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.ThinkTime.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="loadparrot.model.UserAgent">
+<em class="property">class </em><tt class="descclassname">loadparrot.model.</tt><tt class="descname">UserAgent</tt><big>(</big><em>name</em>, <em>agent_string</em>, <em>probability=100</em>, <em>requests_limit=1</em><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#UserAgent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.UserAgent" title="Permalink to this definition">¶</a></dt>
+<dd><p>configures UserSession</p>
+<dl class="method">
+<dt id="loadparrot.model.UserAgent.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>name</em>, <em>agent_string</em>, <em>probability=100</em>, <em>requests_limit=1</em><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#UserAgent.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.UserAgent.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> &#8211; i.e. UserAgent.SAFARI_6</li>
+<li><strong>probability</strong> &#8211; what is the probability of this agent being used on</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>UserSession
+:param requests_limit: how many requests can be executed in parallel</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="loadparrot.model.UserAgent.get_as_dict">
+<tt class="descname">get_as_dict</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#UserAgent.get_as_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.UserAgent.get_as_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>a representation for geventhttpclient</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="loadparrot.model.UserSession">
+<em class="property">class </em><tt class="descclassname">loadparrot.model.</tt><tt class="descname">UserSession</tt><big>(</big><em>name</em>, <em>probability=100</em><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#UserSession"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.UserSession" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object that is send to worker to execute</p>
+<dl class="method">
+<dt id="loadparrot.model.UserSession.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>name</em>, <em>probability=100</em><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#UserSession.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.UserSession.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="loadparrot.model.UserSession.get_configured">
+<tt class="descname">get_configured</tt><big>(</big><em>runtime_config</em><big>)</big><a class="reference internal" href="_modules/loadparrot/model.html#UserSession.get_configured"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.UserSession.get_configured" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs a deep copy of self and configures all session steps
+with runtime_config
+Such session can be send to worker</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>runtime_config</strong> (<em>RuntimeConfig</em>) &#8211; runtime_configuration</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">UserSession</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="loadparrot.model.UserSessionStep">
+<em class="property">class </em><tt class="descclassname">loadparrot.model.</tt><tt class="descname">UserSessionStep</tt><a class="reference internal" href="_modules/loadparrot/model.html#UserSessionStep"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.model.UserSessionStep" title="Permalink to this definition">¶</a></dt>
+<dd><p>An abstract step. Inherit and implement __init__ and __call__</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="module-loadparrot.utils">
+<span id="utils"></span><h2>utils<a class="headerlink" href="#module-loadparrot.utils" title="Permalink to this headline">¶</a></h2>
+<p>Various utilities</p>
+<dl class="class">
+<dt id="loadparrot.utils.WeightedRandomGenerator">
+<em class="property">class </em><tt class="descclassname">loadparrot.utils.</tt><tt class="descname">WeightedRandomGenerator</tt><big>(</big><em>weights</em><big>)</big><a class="reference internal" href="_modules/loadparrot/utils.html#WeightedRandomGenerator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.utils.WeightedRandomGenerator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Best weighted random generator not requiring numpy
+Source:
+<a class="reference external" href="http://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python">http://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python</a></p>
+<dl class="method">
+<dt id="loadparrot.utils.WeightedRandomGenerator.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>weights</em><big>)</big><a class="reference internal" href="_modules/loadparrot/utils.html#WeightedRandomGenerator.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#loadparrot.utils.WeightedRandomGenerator.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-loadparrot.config">
+<span id="config"></span><h2>config<a class="headerlink" href="#module-loadparrot.config" title="Permalink to this headline">¶</a></h2>
+<p>Configuration file.</p>
+<p>Variables in this file might be overwritten from command line.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Specific modules</a><ul>
+<li><a class="reference internal" href="#module-loadparrot.king">king</a></li>
+<li><a class="reference internal" href="#module-loadparrot.worker">worker</a></li>
+<li><a class="reference internal" href="#module-loadparrot.model">model</a><ul>
+<li><a class="reference internal" href="#note-about-probability">note about probability</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-loadparrot.utils">utils</a></li>
+<li><a class="reference internal" href="#module-loadparrot.config">config</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="readme.html"
+                        title="previous chapter">Short introduction to loadParrot</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/modules.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="readme.html" title="Short introduction to loadParrot"
+             >previous</a> |</li>
+        <li><a href="index.html">loadParrot 0.0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Mateusz Lapsa-Malawski.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
