@@ -1,5 +1,4 @@
 pyzmq
 geventhttpclient
 fabric
-geventhttpclient
 sphinx
