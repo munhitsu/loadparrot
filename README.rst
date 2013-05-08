@@ -24,13 +24,19 @@ Install
 
 2. Create and enter virtual env. My favourite method is by using
    virtualenv wrapper. See: `gist <https://gist.github.com/1034876>`_
-3. Install all dependencies::
 
-    cd (your clonned repo dir)
+3. Install all C dependencies. In case of osx `homebrew <http://mxcl.github.io/homebrew/>`_ seems to be a reliable package manager. ::
+
+    $ brew install libevent
+    $ brew install zeromq
+
+4. Install all python dependencies::
+
+    cd loadparrot
     pip install -r requirements.txt
     add2virtualenv .
 
-3. Repeat on all hosts that you want to run workers
+5. Repeat on all hosts that you want to run workers
 
 Usage
 -----
@@ -67,6 +73,6 @@ TODO
    -  flush queues (handbrake) so that king can restart and we don't
       need to restart workers
 
--  fab + buildout for easy remote deploy and start
+-  fab + buildout/virtualenv for easy remote deploy and start
 -  rename king to... queen
 
