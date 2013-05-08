@@ -20,7 +20,7 @@ Install
 -------
 1. Clone git repo::
 
-    git clone https://github.com/munhitsu/loadparrot.git
+    $ git clone https://github.com/munhitsu/loadparrot.git
 
 2. Create and enter virtual env. My favourite method is by using
    virtualenv wrapper. See: `gist <https://gist.github.com/1034876>`_
@@ -32,9 +32,9 @@ Install
 
 4. Install all python dependencies::
 
-    cd loadparrot
-    pip install -r requirements.txt
-    add2virtualenv .
+    $ cd loadparrot
+    $ pip install -r requirements.txt
+    $ add2virtualenv .
 
 5. Repeat on all hosts that you want to run workers
 
@@ -42,12 +42,12 @@ Usage
 -----
 1. Start workers pointing to kings ip::
 
-    python loadparrot/worker.py --king (king_ip)
+    $ python loadparrot/worker.py --king (king_ip)
 
 2. As a temporary hack edit scenario in loadparrot/scenario.py
 3. Start the king::
 
-    python loadparrot/king.py
+    $ python loadparrot/king.py
 
 Documentation
 -------------
